@@ -48,8 +48,8 @@
 
 1. 克隆此仓库：
    ```
-   git clone https://github.com/yourusername/websocket-chat-app.git
-   cd websocket-chat-app
+   git clone [git@github.com:myluke/wsChat.git](https://github.com/myluke/wsChat.git)
+   cd wsChat
    ```
 2. 运行服务器：
    ```
