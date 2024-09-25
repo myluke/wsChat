@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 聊天</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+        #sidebar {
+            width: 200px;
+            background-color: #f0f0f0;
+            padding: 20px;
+            border-right: 1px solid #ccc;
+        }
+        #main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+        #messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        #input-area {
+            display: flex;
+        }
+        #messageInput {
+            flex-grow: 1;
+            padding: 10px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .conversation {
+            cursor: pointer;
+            padding: 10px;
+            margin-bottom: 5px;
+            background-color: #e0e0e0;
+        }
+        .conversation:hover {
+            background-color: #d0d0d0;
+        }
+        .message-time {
+            font-size: 0.8em;
+            color: #888;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h2>会话列表</h2>
+        <div id="conversations">
+            <!-- 移除静态会话列表 -->
+        </div>
+        <button onclick="createNewConversation()">新建会话</button>
+    </div>
+    <div id="main-content">
+        <div id="messages"></div>
+        <div id="input-area">
+            <input type="text" id="messageInput" placeholder="输入消息...">
+            <button onclick="sendMessage()">发送</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = new WebSocket('ws://localhost:8880/ws');
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const conversationsDiv = document.getElementById('conversations');
+        let currentConversationId = null;
+
+        socket.onopen = function(e) {
+            console.log("连接已建立");
+        };
+
+        socket.onmessage = function(event) {
+            const message = JSON.parse(event.data);
+            if (message.type === 'newConversation') {
+                addConversationToList(message.content);
+                currentConversationId = message.content;
+                messagesDiv.innerHTML = ''; // 清空当前消息
+                console.log(`新建并切换到会话 ${message.content}`);
+            } else if (message.type === 'chat') {
+                const messageElement = document.createElement('p');
+                const sentTime = new Date(message.sentTime);
+                const receivedTime = new Date(message.receivedTime);
+                messageElement.innerHTML = `${message.content} 
+                    <span class="message-time">
+                        ${formatTime(sentTime)} 
+                    </span>`;
+                messagesDiv.appendChild(messageElement);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        };
+
+        socket.onerror = function(error) {
+            console.log(`WebSocket 错误: ${error}`);
+        };
+
+        function sendMessage() {
+            if (!currentConversationId) {
+                alert("请先选择或创建一个会话");
+                return;
+            }
+            const message = {
+                type: 'chat',
+                content: messageInput.value,
+                conversationId: currentConversationId,
+                sentTime: new Date()
+            };
+            socket.send(JSON.stringify(message));
+            messageInput.value = '';
+        }
+
+        function createNewConversation() {
+            const message = {
+                type: 'newConversation',
+                sentTime: new Date()
+            };
+            socket.send(JSON.stringify(message));
+        }
+
+        function addConversationToList(conversationId) {
+            const conversationElement = document.createElement('div');
+            conversationElement.className = 'conversation';
+            conversationElement.textContent = `会话 ${conversationId}`;
+            conversationElement.onclick = function() {
+                currentConversationId = conversationId;
+                messagesDiv.innerHTML = ''; // 清空当前消息
+                console.log(`切换到会话 ${conversationId}`);
+                // 这里可以添加加载会话历史记录的逻辑
+                const message = {
+                    type: 'loadHistory',
+                    conversationId: conversationId,
+                    sentTime: new Date()
+                };
+                socket.send(JSON.stringify(message));
+            };
+            conversationsDiv.appendChild(conversationElement);
+        }
+
+        function formatTime(date) {
+            return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        // 添加回车键发送消息的功能
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
