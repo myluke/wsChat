@@ -2,7 +2,7 @@
 
 这是一个使用Go语言后端和JavaScript前端实现的简单WebSocket聊天应用。
 
-![演示图片](demo.png)
+![演示图片](img/demo.png)
 
 ## 目录
 
